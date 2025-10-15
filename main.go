@@ -83,7 +83,7 @@ func FileLogRotateServe() {
 	for {
 		now := time.Now()
 		next := now.Add(time.Hour * 24)
-		next = time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, next.Location())
+		next = time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 1, 0, next.Location())
 
 		t := time.NewTimer(next.Sub(now))
 		<-t.C
@@ -144,7 +144,9 @@ func FileLogRotate() (err error) {
 		zipWritter.ModTime = now
 		zipWritter.Name = filename
 		zipWritter.Comment = "dns-track log file"
-		zipWritter.Flush()
+		if err = zipWritter.Flush(); err != nil {
+			fmtLogger.Error("Could not flush gzip writer", slog.Any("error", err))
+		}
 	}
 
 	return nil
@@ -302,7 +304,10 @@ func (m DNSMatch) Log() {
 		m.RCode,
 	)
 
-	zipWritter.Write([]byte(msg))
+	_, err := zipWritter.Write([]byte(msg))
+	if err != nil {
+		fmtLogger.Error("Could not write to gzip writer", slog.Any("error", err))
+	}
 }
 
 func Handle(ts time.Time, packet_raw []byte) {
